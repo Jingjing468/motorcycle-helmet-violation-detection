@@ -136,3 +136,17 @@ helmet_violation_detection/
 ├── .gitignore
 ├── README.md
 └── requirements.txt
+
+## Demo
+
+### Sample Detection
+
+![Sample Detection](results/sample_detection.png)
+
+### Training Results
+
+![Training Results](results/results.png)
+
+### Confusion Matrix
+
+![Confusion Matrix](results/confusion_matrix.png)

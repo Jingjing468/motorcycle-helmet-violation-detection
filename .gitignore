@@ -2,3 +2,10 @@ dataset/
 __pycache__/
 *.pyc
 .DS_Store
+dataset/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+temp_input.jpg
+temp_plate.jpg

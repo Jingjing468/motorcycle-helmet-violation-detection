@@ -2,6 +2,17 @@
 
 A Deep Learning-based traffic safety system that detects motorcycle riders, helmets, helmet violations, and license plates from traffic images using YOLOv8 and OCR.
 
+## Demo
+
+The application provides a Gradio web interface where users can upload a motorcycle traffic image and receive:
+
+- Helmet / no-helmet detection
+- Motorcycle detection
+- License plate detection
+- OCR-based plate recognition
+- Violation status
+- Detection confidence scores
+
 ## Project Overview
 
 This project automatically analyzes motorcycle images and detects:
@@ -150,3 +161,12 @@ helmet_violation_detection/
 ### Confusion Matrix
 
 ![Confusion Matrix](results/confusion_matrix.png)
+
+## Final Validation Results
+
+- mAP@50: 94.2%
+- mAP@50-95: 67.5%
+- No-Helmet Precision: 91.7%
+- No-Helmet Recall: 81.7%
+
+The model performs well overall, but difficult cases such as small riders, rear-view heads, occlusion, poor lighting, and blurry license plates may still cause incorrect predictions.

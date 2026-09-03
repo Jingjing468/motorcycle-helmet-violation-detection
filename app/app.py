@@ -1,23 +1,39 @@
-import gradio as gr
-import cv2
-import easyocr
-from ultralytics import YOLO
+import importlib
 from pathlib import Path
+
+import gradio as gr  # type: ignore[import-not-found]
+import cv2  # type: ignore[import-not-found]
+
+try:
+    easyocr = importlib.import_module("easyocr")
+except ImportError:  # pragma: no cover - optional dependency for OCR path
+    easyocr = None
+
+try:
+    from ultralytics import YOLO  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - optional dependency for model path
+    YOLO = None
 
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = PROJECT_ROOT / "model" / "helmet_best.pt"
 
 # Load Deep Learning model
-model = YOLO(str(MODEL_PATH))
+model = YOLO(str(MODEL_PATH)) if YOLO is not None else None
 
 # Load OCR
-reader = easyocr.Reader(["en"])
+reader = easyocr.Reader(["en"]) if easyocr is not None else None
 
 
 def web_detect(image):
     if image is None:
         return None, "Please upload an image", "Not detected", ""
+
+    if model is None:
+        return None, "Model dependency is missing. Please install ultralytics.", "Not detected", ""
+
+    if reader is None:
+        return None, "OCR dependency is missing. Please install easyocr.", "Not detected", ""
 
     temp_path = PROJECT_ROOT / "temp_input.jpg"
 

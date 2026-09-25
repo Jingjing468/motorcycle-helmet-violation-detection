@@ -291,7 +291,7 @@ The metrics are listed in [Model Evaluation](#10-model-evaluation). The table be
 | Example | Input and application result | Application summary |
 | --- | --- | --- |
 | Crowded traffic — validated detection | ![Input and Gradio result for a crowded traffic scene](results/examples/crowded_traffic_comparison.jpg) | 13 motorcycles; 14 helmeted occupants; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
-| Single rider — missed detection example | ![Input and Gradio result for a single-rider scene](results/examples/single_rider_comparison.jpg) | 0 motorcycles or validated occupants; 0 plates detected. The app reported no violation because it did not validate a motorcycle occupant. This illustrates a failure case, not a successful detection. |
+| Single rider — motorcycle detection | ![Input and Gradio result for a single-rider scene](results/examples/single_rider_comparison.jpg) | 1 motorcycle detected; no helmet class was validated; 0 plates detected. The app reported no violation. |
 
 These images illustrate individual inference behavior; they are not a substitute for the quantitative evaluation above. The source dataset is identified as CC BY 4.0 in its Roboflow export metadata. The existing `results/results.png`, `results/confusion_matrix.png`, and `results/sample_detection.png` files are empty in this repository snapshot, so they are not used as figures here.
 

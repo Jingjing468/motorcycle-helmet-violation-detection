@@ -18,6 +18,7 @@ except ImportError:  # pragma: no cover - optional dependency for model path
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = PROJECT_ROOT / "model" / "helmet_best.pt"
+COCO_MODEL_PATH = PROJECT_ROOT / "model" / "coco" / "yolov8n.pt"
 
 # Load Deep Learning model
 model = YOLO(str(MODEL_PATH)) if YOLO is not None else None
@@ -26,9 +27,9 @@ if model is not None:
     print(model.names)
 
 # COCO model supplies internal person validation and motorcycle detections.
-# Ultralytics downloads yolov8n.pt on first use if it is not already cached.
+# Use the checked-in COCO weights for person and motorcycle validation.
 try:
-    coco_model = YOLO("yolov8n.pt") if YOLO is not None else None
+    coco_model = YOLO(str(COCO_MODEL_PATH)) if YOLO is not None else None
 except Exception as exc:  # keep the app available if validator weights cannot load
     print(f"COCO validation model unavailable: {exc}")
     coco_model = None

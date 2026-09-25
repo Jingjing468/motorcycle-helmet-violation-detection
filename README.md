@@ -1,172 +1,54 @@
 # Motorcycle Helmet Violation Detection
 
-A Deep Learning-based traffic safety system that detects motorcycle riders, helmets, helmet violations, and license plates from traffic images using YOLOv8 and OCR.
+A Gradio application that detects motorcycles, helmet use, and license plates in traffic images. EasyOCR reads detected plates.
 
-## Demo
+## Project structure
 
-The application provides a Gradio web interface where users can upload a motorcycle traffic image and receive:
+```text
+.
+├── app/                 # Gradio application
+├── model/
+│   ├── coco/            # COCO weights for person and motorcycle validation
+│   ├── archive/         # Previous custom model weights
+│   └── helmet_best.pt   # Current helmet and plate detector
+├── notebook/            # Training notebook
+├── results/             # Training plots and sample output
+├── requirements.txt
+└── README.md
+```
 
-- Helmet / no-helmet detection
-- Motorcycle detection
-- License plate detection
-- OCR-based plate recognition
-- Violation status
-- Detection confidence scores
+Training data is kept locally under `dataset/` and ignored by Git because of its size. The virtual environment and temporary inference images are also local-only.
 
-## Project Overview
+## Run the app
 
-This project automatically analyzes motorcycle images and detects:
+Install the dependencies and launch Gradio from the repository root:
 
-- Motorcycle / Bike
-- Helmet
-- No Helmet
-- Number Plate
+```bash
+pip install -r requirements.txt
+python app/app.py
+```
 
-When a rider without a helmet is detected, the system marks it as a helmet violation.
+Upload an image to view motorcycle, helmet/no-helmet, and license-plate detections, along with the violation status and OCR result.
 
-The detected license plate is cropped and processed using EasyOCR to extract the plate number.
+## Models
 
-## Features
-
-- Motorcycle detection
-- Helmet detection
-- No-helmet violation detection
-- License plate detection
-- License plate OCR
-- Confidence score display
-- Violation status
-- Evidence image saving
-- CSV violation records
-- Gradio web interface
-
-## Deep Learning Model
-
-The project uses YOLOv8 for object detection.
-
-Classes:
-
-1. bike
-2. helmet
-3. no-helmet
-4. number-plate
+The custom detector recognizes `bike`, `helmet`, `no-helmet`, and `number-plate`. The COCO model in `model/coco/` supplies person and motorcycle validation detections. Model files are checked into the repository.
 
 ## Dataset
 
-Dataset used:
+The training dataset is *Helmet and Number Plate Detection for Motorbike Safety – Version 3* from [Roboflow Universe](https://universe.roboflow.com/helmet-and-number-plate-detection-project/helmet-and-number-plate-detection-for-motorbike-safety-iityz). The dataset itself is not tracked in this repository.
 
-Helmet and Number Plate Detection for Motorbike Safety - Version 3
+## Results
 
-Source:
-https://universe.roboflow.com/helmet-and-number-plate-detection-project/helmet-and-number-plate-detection-for-motorbike-safety-iityz
-
-The dataset is not included in this repository because of its large size.
-
-## Model Performance
-
-Validation Results:
+Validation metrics:
 
 - mAP@50: 94.2%
-- mAP@50-95: 67.5%
+- mAP@50–95: 67.5%
+- No-helmet precision: 91.7%
+- No-helmet recall: 81.7%
 
-Per-class mAP@50-95:
+![Sample detection](results/sample_detection.png)
 
-- Bike: 79.8%
-- Helmet: 63.1%
-- No Helmet: 60.2%
-- Number Plate: 66.8%
+![Training results](results/results.png)
 
-No-Helmet Detection:
-
-- Precision: 91.7%
-- Recall: 81.7%
-
-## System Architecture
-
-Traffic Image
-
-↓
-
-YOLOv8 Object Detection
-
-↓
-
-Bike / Helmet / No-Helmet / Number Plate
-
-↓
-
-Helmet Violation Detection
-
-↓
-
-Number Plate Cropping
-
-↓
-
-Image Enhancement
-
-↓
-
-EasyOCR
-
-↓
-
-License Plate Text
-
-↓
-
-Violation Result + Evidence
-
-## Technologies
-
-- Python
-- PyTorch
-- YOLOv8
-- Ultralytics
-- OpenCV
-- EasyOCR
-- Gradio
-- Google Colab
-
-## Project Structure
-
-```text
-helmet_violation_detection/
-├── app/
-│   └── app.py
-├── dataset/
-├── model/
-│   └── helmet_best.pt
-├── notebook/
-│   └── helmet_violation_detection.ipynb
-├── results/
-│   ├── confusion_matrix.png
-│   ├── results.png
-│   └── sample_detection.png
-├── test_images/
-├── test_videos/
-├── .gitignore
-├── README.md
-└── requirements.txt
-
-## Demo
-
-### Sample Detection
-
-![Sample Detection](results/sample_detection.png)
-
-### Training Results
-
-![Training Results](results/results.png)
-
-### Confusion Matrix
-
-![Confusion Matrix](results/confusion_matrix.png)
-
-## Final Validation Results
-
-- mAP@50: 94.2%
-- mAP@50-95: 67.5%
-- No-Helmet Precision: 91.7%
-- No-Helmet Recall: 81.7%
-
-The model performs well overall, but difficult cases such as small riders, rear-view heads, occlusion, poor lighting, and blurry license plates may still cause incorrect predictions.
+![Confusion matrix](results/confusion_matrix.png)

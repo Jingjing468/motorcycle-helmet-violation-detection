@@ -1,104 +1,119 @@
 # Motorcycle Helmet Violation Detection
 
-An image-based computer vision project for identifying motorcycles, helmet use, and license plates. The application combines a custom YOLOv8 detector, a supporting COCO-pretrained YOLO model, OpenCV image processing, and EasyOCR in a local Gradio interface.
+## Project Overview
 
-## 1. Project Overview
+This project explores deep-learning-based computer vision for identifying motorcycle helmet violations in traffic images. Its primary objective is to detect motorcycle riders and passengers and classify their headwear as **Helmet** or **No Helmet**. The system uses a custom YOLOv8 model and a Gradio interface for image-based inference.
 
-Motorcycle Helmet Violation Detection analyzes a traffic image and locates motorcycles, helmets, people without helmets, and number plates. It associates head detections with people and motorcycles before deciding whether the image contains a validated no-helmet case. Detected plate regions are also passed to optical character recognition (OCR) to try to read their registration text.
+The current application also detects motorcycles and visible license plates, and uses EasyOCR to attempt reading plate text. These are supporting extensions to the helmet-violation workflow. Helmet and no-helmet detection remain the main research and development focus; motorcycle localization and plate detection/OCR have limitations and are planned for further improvement.
 
-The project includes a Gradio web interface for uploading an image and viewing the annotated result, violation status, plate reading, and detection summary. It is an assistive prototype; its output should be reviewed by a person.
+> **Project scope:** The primary focus is helmet and no-helmet detection. Motorcycle detection and license plate recognition are supporting features that are still being improved.
 
-## 2. Problem Statement
+## Problem Statement
 
-Motorcycle riders may travel without helmets, and reviewing traffic images manually can take considerable effort. Identifying a rider in a crowded scene, deciding whether the rider is wearing a helmet, and reading a small or partially visible plate can each be difficult. Deep learning can help automate parts of this review by locating relevant objects and extracting candidate plate text.
+Motorcycle riders who do not wear helmets face a higher risk of serious injury. Manually reviewing traffic images for helmet use can require substantial effort, especially in crowded scenes with small or partially occluded riders. This project investigates whether deep learning can automatically identify **Helmet** and **No Helmet** cases for people associated with motorcycles and highlight potential violations for review.
 
-This project explores that workflow. It is not intended to replace traffic officers or make enforcement decisions without human review.
+The system is an assistive prototype. It does not replace police, make enforcement decisions, or guarantee that every rider is detected correctly.
 
-## 3. Proposed Solution
+## Main Objective
 
-The system processes one uploaded image through object detection, association, OCR, and a rule-based violation decision:
+The main objective is to develop and evaluate a deep-learning model that distinguishes between **Helmet** and **No Helmet** for people associated with motorcycles. Motorcycle and plate features support this workflow but are not the primary evaluation target.
+
+## Supporting Features
+
+### Motorcycle Detection
+
+Motorcycle detection helps associate headwear predictions with motorcycle occupants. The application combines custom-model bike detections with motorcycle detections from a COCO-pretrained YOLOv8 model. Localization and rider-to-motorcycle association remain imperfect, particularly when motorcycles overlap.
+
+### License Plate Detection
+
+The application attempts to locate visible motorcycle number plates. This supporting feature demonstrates a possible extension of traffic-safety monitoring; it is not the main project objective and is not claimed to work perfectly.
+
+### License Plate OCR
+
+EasyOCR attempts to read text from detected plate regions. Its results depend on plate size, image quality, viewing angle, lighting, occlusion, and country-specific plate formats. OCR is experimental supporting functionality. A plate may be detected while its text remains unreadable.
+
+## Current Project Scope
+
+The current version prioritizes:
+
+1. Helmet detection.
+2. No-helmet detection.
+3. Identifying a potential helmet violation from validated no-helmet detections associated with motorcycle occupants.
+
+Motorcycle localization and license plate detection/recognition are included as supporting functions. The project does not claim perfect plate detection or OCR.
+
+## System Workflow
+
+The main helmet-violation path is:
 
 ```mermaid
 flowchart TD
-    A[User uploads traffic image] --> B[Run image inference]
-    B --> C[Custom YOLOv8 detector<br/>bike, helmet, no-helmet, plate]
-    B --> D[COCO-pretrained YOLOv8<br/>people and motorcycles]
-    C --> E[Associate head detections<br/>with people and bikes]
-    D --> E
-    E --> F[Validate helmet status<br/>for motorcycle occupants]
-    C --> G[Locate each plate region]
-    G --> H[Crop and enhance plate image]
-    H --> I[EasyOCR reads candidate text]
-    F --> J[Apply violation rule]
-    I --> K[Keep recognized text<br/>or report Unreadable]
-    J --> L[Show annotated result<br/>and summary in Gradio]
-    K --> L
+    A[Traffic image] --> B[Detect people and motorcycles]
+    A --> C[Custom YOLOv8 helmet model]
+    B --> D[Associate people with motorcycles]
+    C --> E[Find helmet and no-helmet candidates]
+    D --> F[Validate occupant headwear]
+    E --> F
+    F --> G[Helmet violation decision]
+    G --> H[Show annotated image and status]
 ```
 
-The displayed custom-model labels are **Bike**, **Helmet**, **No Helmet**, and **Plate**. If at least one validated motorcycle occupant is classified as no-helmet, the application reports a helmet violation.
+The plate path is a separate, optional extension:
 
-## 4. Main Features
+```mermaid
+flowchart LR
+    A[Traffic image] --> B[Number-plate detection]
+    B --> C[Plate crop and image processing]
+    C --> D[EasyOCR text attempt]
+    D --> E[Plate text or Unreadable]
+```
 
-- Detects motorcycles, helmets, no-helmet cases, and number plates.
-- Associates people and head detections with detected motorcycles to support multiple occupants.
-- Uses a second inference pass on enlarged motorcycle or person crops to examine small heads.
-- Detects and processes multiple plates in an image.
-- Applies several image variants before OCR and reports `Unreadable` when no candidate meets the implemented criteria.
-- Draws colored bounding boxes and confidence percentages on the result image.
-- Shows violation status, plate count and OCR text, and an occupant summary.
-- Runs inference locally with the fine-tuned model files included in the repository.
-- Provides an interactive Gradio interface.
+## Detection Classes
 
-## 5. Technologies Used
+The custom YOLO model has four classes:
 
-| Technology | Use in this project |
+| Class ID | Class | Role in project |
+| ---: | --- | --- |
+| 0 | `bike` | Supporting motorcycle localization. |
+| 1 | `helmet` | Main helmet-use class. |
+| 2 | `no-helmet` | Main helmet-violation class. |
+| 3 | `number-plate` | Supporting plate detection and OCR. |
+
+Although the model has four classes, **`helmet` and `no-helmet` are the key classes for the main objective**.
+
+## Technologies Used
+
+| Technology | Role |
 | --- | --- |
 | Python | Application and inference pipeline. |
-| PyTorch | Deep learning framework used by the Ultralytics model runtime. |
-| Ultralytics YOLOv8 | Custom object detection and the supporting COCO-pretrained model. |
-| EasyOCR | Reads candidate registration text from detected plate crops. |
-| OpenCV | Image conversion, resizing, crop processing, contrast enhancement, thresholding, and drawing result boxes. |
-| Gradio | Local web interface for image upload and display of results. |
+| PyTorch | Deep-learning framework used by the Ultralytics runtime. |
+| YOLOv8 / Ultralytics | Primary detector for helmet, no-helmet, bike, and number-plate classes; a COCO-pretrained YOLOv8 model supplies supporting person and motorcycle detections. |
+| OpenCV | Image conversion, cropping, resizing, enhancement, and result annotation. |
+| EasyOCR | Supporting, experimental recognition of text in plate crops. |
+| Gradio | Web interface for uploading images and viewing results. |
 | Google Colab | Reported environment for model training and fine-tuning. |
-| Roboflow | Source and export format for the public helmet and number-plate dataset. |
-| Git and GitHub | Source control and project hosting. |
+| Roboflow | Dataset source and YOLO-format export. |
+| Git and GitHub | Version control and project hosting. |
 
-## 6. Dataset
+## Dataset
 
-The project uses the Roboflow Universe dataset [Helmet and Number Plate Detection for Motorbike Safety](https://universe.roboflow.com/helmet-and-number-plate-detection-project/helmet-and-number-plate-detection-for-motorbike-safety-iityz). The custom detector uses these class IDs:
+The project uses the Roboflow Universe dataset [Helmet and Number Plate Detection for Motorbike Safety](https://universe.roboflow.com/helmet-and-number-plate-detection-project/helmet-and-number-plate-detection-for-motorbike-safety-iityz). The four labeled classes are `bike`, `helmet`, `no-helmet`, and `number-plate`.
 
-| ID | Class |
-| ---: | --- |
-| 0 | bike |
-| 1 | helmet |
-| 2 | no-helmet |
-| 3 | number-plate |
+Project training notes identify **approximately 8,481 images for Version 4**. Additional difficult no-helmet samples were added to improve coverage of underrepresented or challenging situations, including rear-view riders, crowded scenes, small heads, and multiple riders. More representative helmet/no-helmet examples matter because missed or incorrect headwear predictions affect the project's central objective.
 
-Project training notes identify a Version 4 dataset of approximately **8,481 images**, with additional difficult no-helmet examples such as rear views, crowded scenes, and small heads. These examples were added to improve coverage of cases that were challenging for the earlier model.
+The local ignored `dataset/` directory contains a Roboflow **Version 3** export rather than Version 4. Its metadata reports 20,287 images; its local split directories contain 17,742 training, 1,690 validation, and 855 test images. These counts refer to the local Version 3 export and should not be confused with the approximately 8,481-image Version 4 training set in the project notes. The dataset is excluded from the Git repository.
 
-There is a dataset-version discrepancy in the local repository snapshot: the ignored `dataset/` directory contains a Roboflow **Version 3** YOLOv8 export. Its metadata reports 20,287 images, and the local split directories contain 17,742 training, 1,690 validation, and 855 test images. Those counts describe the local Version 3 export, not the Version 4 training set described in the project notes. The dataset is ignored by Git and is not included in the repository clone.
+The Version 3 export metadata records auto-orientation, resizing to fit within 640 × 640 pixels, and generated variants with random rotation between −15° and +15° and Gaussian blur up to 1.5 pixels. The exact Version 4 split counts and final training augmentation settings are not recorded in the repository.
 
-## 7. Data Preparation
+## Training and Fine-Tuning
 
-The Roboflow export uses YOLO bounding-box labels and defines separate training, validation, and test directories. Its Version 3 metadata records auto-orientation, resizing to fit within 640 × 640 pixels, and generated variants using random rotation between −15° and +15° and Gaussian blur up to 1.5 pixels.
+According to the project training notes, the YOLOv8 model was trained and fine-tuned in Google Colab using an NVIDIA Tesla T4 GPU. The later fine-tuning continued from the earlier model for **10 additional epochs**, using additional difficult samples. Its main purpose was to improve no-helmet detection in challenging cases such as rear views, crowded scenes, small heads, and multiple riders.
 
-The project notes describe adding difficult no-helmet examples for fine-tuning. The exact Version 4 split counts, the exact preparation applied to those additional examples, and the augmentation settings for the final training run are not recorded in the repository. The local training notebook file is empty, so this README does not infer those missing details from it.
+The repository does not contain a populated training notebook or the complete training configuration. Batch size, optimizer settings, and exact splits used for each reported run are therefore not specified here. The fine-tuned and original custom weights use the same YOLOv8 detector architecture.
 
-## 8. Model Architecture
+## Evaluation Results
 
-YOLOv8 is a one-stage object detector: it predicts object bounding boxes, class labels, and confidence scores in a single detection pipeline. This project uses a fine-tuned YOLOv8 model for four custom classes: `bike`, `helmet`, `no-helmet`, and `number-plate`.
-
-The app also loads `model/coco/yolov8n.pt`, a COCO-pretrained YOLOv8 nano model. It supplies person and motorcycle detections that help validate custom head detections and associate people with bikes. The custom and supporting models have different weights and roles, but they are both YOLOv8 models; they are not two distinct architecture comparisons.
-
-## 9. Training Process
-
-According to the project training notes, training and fine-tuning were performed in Google Colab with PyTorch and Ultralytics on an NVIDIA Tesla T4 GPU. An initial custom detector was trained first. A later experiment added difficult no-helmet images and continued training from the earlier model for 10 additional epochs rather than starting from random weights. Continuing training from an existing model with additional or improved examples is called **fine-tuning**.
-
-The repository does not contain a populated training notebook or the complete training configuration, so details such as batch size, optimizer settings, and exact split used for each reported run are not documented here.
-
-## 10. Model Evaluation
-
-The following values are the project-reported evaluation results:
+The following are the project-reported model evaluation metrics. They describe object-detection evaluation and do not guarantee the same results on every image or deployment setting.
 
 | Metric | Original model | Fine-tuned model |
 | --- | ---: | ---: |
@@ -107,7 +122,7 @@ The following values are the project-reported evaluation results:
 | mAP@50 | 0.942 | 0.942 |
 | mAP@50:95 | 0.675 | 0.690 |
 
-### Per-class mAP@50:95
+### Per-Class mAP@50:95
 
 | Class | Original model | Fine-tuned model |
 | --- | ---: | ---: |
@@ -116,71 +131,98 @@ The following values are the project-reported evaluation results:
 | no-helmet | 0.602 | 0.622 |
 | number-plate | 0.668 | 0.694 |
 
-The reported overall mAP@50:95 increased from 0.675 to 0.690. No-helmet mAP@50:95 increased from 0.602 to 0.622, and no-helmet recall increased from 0.817 to 0.836. These class-specific values are distinct from the fine-tuned model's reported overall recall of 0.889.
+The reported **no-helmet mAP@50:95 increased from 0.602 to 0.622**, and **no-helmet recall increased from 0.817 to 0.836**. These changes are relevant to the main violation-detection objective. The overall fine-tuned recall of 0.889 is a separate metric from the class-specific no-helmet recall of 0.836.
 
-In simple terms:
+- **Precision** measures how often positive predictions are correct.
+- **Recall** measures how many relevant objects are found.
+- **mAP@50** is mean average precision at an intersection-over-union threshold of 0.50.
+- **mAP@50:95** averages mean average precision across IoU thresholds from 0.50 through 0.95.
 
-- **Precision** measures how often the model's positive detections are correct.
-- **Recall** measures how many of the relevant objects the model successfully finds.
-- **mAP@50** is mean average precision when a predicted box counts as a match at intersection-over-union (IoU) of 0.50.
-- **mAP@50:95** averages mean average precision across IoU thresholds from 0.50 through 0.95, so it also reflects how closely predicted boxes align with the labelled objects.
+### Fine-Tuning Example
 
-## 11. Improvement Experiment
+Project notes include one image-level comparison from the fine-tuning experiment:
 
-The fine-tuning experiment focused on difficult no-helmet examples, including rear-view riders, crowded scenes, and small heads. Project notes report 10 additional training epochs and this example comparison:
-
-| Example image detections | Original model | Fine-tuned model |
+| Detections in example image | Original model | Fine-tuned model |
 | --- | ---: | ---: |
 | Bikes | 5 | 5 |
 | Helmets | 12 | 9 |
 | No-helmets | 1 | 4 |
 
-This example indicates that the fine-tuned model identified more no-helmet cases in that image. It is one example and does not establish perfect accuracy or guarantee the same improvement on every scene.
+This single example shows more no-helmet detections in that image after fine-tuning. It is qualitative evidence for that case, not an aggregate metric or a guarantee of improvement in every scene.
 
-## 12. System Workflow
+## Helmet Violation Logic
 
-```text
-User uploads image
-        ↓
-Custom YOLO and COCO YOLO inference
-        ↓
-Bike / person association
-        ↓
-Helmet / no-helmet detection and validation
-        ↓
-Number-plate detection
-        ↓
-Plate crop and image enhancement
-        ↓
-EasyOCR text recognition
-        ↓
-Violation decision
-        ↓
-Annotated image and summary in Gradio
-```
+The application associates headwear detections with detected people and motorcycles. A person must be associated with a motorcycle, and the headwear prediction must meet the app's spatial and confidence checks. If at least one motorcycle occupant has a validated **No Helmet** prediction, the application reports **Helmet Violation Detected**.
 
-## 13. License Plate Detection and OCR
+The absence of a helmet detection does **not** automatically mean that a person is not wearing a helmet. A valid no-helmet prediction is required. If no occupant is validated as no-helmet, the app reports **No Violation Detected**; this means no violation was detected by the current model and checks, not that every occupant's helmet status is known with certainty.
 
-Plate detection and text recognition are separate steps. The custom YOLO model first locates a `number-plate` region. The application expands and crops that region from the original image, enlarges it, and creates several views for OCR, including color, grayscale, CLAHE-enhanced, sharpened, and thresholded versions. EasyOCR reads text from these candidate views.
+## Web Application
 
-The code filters OCR output to ASCII letters, digits, and hyphens, then accepts registration-like candidates within its implemented length and character criteria. This removes non-ASCII text such as Khmer province headings from the registration candidate. It does not translate or recognize the Khmer text. Multiple plates are processed independently and listed in the result. A plate can be detected even when its text is unreadable; in that case, the app reports `Unreadable` for the OCR result.
+The Gradio application lets a user upload a traffic image and run inference. It displays the annotated image, helmet/no-helmet and motorcycle boxes, optional plate boxes, a helmet-violation status, an occupant summary, and any recognized plate text. Helmet status is the primary result. The application analyzes uploaded images; video and live-camera inference are not implemented.
 
-## 14. Helmet Violation Logic
+Inference runs locally after dependencies and model files are available. Google Colab is used for the reported training workflow, not required to run the web interface.
 
-The app validates head detections through spatial association:
+## Current Limitations
 
-1. The COCO model detects people and motorcycles; the custom model detects bikes and helmet classes.
-2. A helmet or no-helmet box must fall in the upper portion of a detected person.
-3. The person must be associated with a detected motorcycle using their relative position.
-4. A custom `no-helmet` detection is required to report a violation.
+### Helmet Detection
 
-The absence of a helmet box alone does not count as a violation. Person and motorcycle association, confidence thresholds, and additional crop-based detections are used to reduce unsupported head detections. These checks can reduce false positives but do not eliminate them.
+- Hats or beanies may sometimes be confused with helmets.
+- Small or distant heads may be missed.
+- Occlusion, lighting, and unusual viewing angles can affect predictions.
+- Crowded motorcycles and multiple passengers remain challenging to associate correctly.
+- The model can miss a helmet even when one is visibly present. For example, the single-rider comparison image below shows a helmeted rider whose helmet was not validated by the application; this is a missed classification, not a successful no-helmet example.
 
-## 15. Web Application
+### Motorcycle Detection
 
-The Gradio interface lets a user upload an image and click **Analyze Image**. It displays the annotated image, violation status, detected plate list and OCR text, and a summary of bikes and associated occupants. The app runs locally and uses the model files in the repository; Google Colab is not required for inference after dependencies and model files are available.
+- Duplicate detections may occur in difficult scenes.
+- Overlapping motorcycles can be difficult to separate.
+- Errors in person-to-motorcycle association can affect occupant-level results.
 
-## 16. Project Structure
+### License Plate Detection and OCR
+
+License plate detection and OCR are supporting experimental features. Their limitations include:
+
+- Small or distant plates may not be detected or may not contain enough pixels for OCR.
+- Angled, occluded, or partial plate regions may be missed or cropped incompletely.
+- OCR may return unreadable or incorrect text.
+- Country-specific formats, including Cambodian plate layouts, may reduce generalization.
+- Plate detection and OCR have not been established as perfect or reliable enforcement tools.
+
+The results images illustrate individual runs and failure cases; they do not replace the quantitative evaluation above. The local `results/results.png`, `results/confusion_matrix.png`, and `results/sample_detection.png` files are empty in this repository snapshot, so they are not presented as evaluation figures.
+
+## Future Work
+
+### Helmet Detection Improvements
+
+- Collect more difficult helmet/no-helmet images.
+- Add examples of hats, caps, beanies, scarves, and bare heads.
+- Improve association for multiple riders and passengers.
+- Reduce false helmet detections and improve small-head detection.
+- Evaluate other object-detection architectures using consistent data splits and metrics.
+- Evaluate real-time video performance on defined hardware.
+
+### Motorcycle Detection Improvements
+
+- Improve motorcycle localization and reduce duplicate boxes.
+- Improve detection in crowded traffic and overlapping-bike scenes.
+- Improve rider-to-motorcycle association.
+
+### License Plate Improvements
+
+License plate recognition is planned as a future extension. Potential improvements include:
+
+- Collect more Cambodian motorcycle plate images.
+- Improve full-plate annotations.
+- Train a dedicated license plate detector.
+- Improve small and angled plate detection.
+- Evaluate stronger OCR models and perspective correction.
+- Support Cambodian plate formats and multi-line text recognition.
+
+## Future Project Direction
+
+The long-term goal is a more complete motorcycle traffic-safety system. The current project focuses mainly on helmet violation detection. Future versions will improve the supporting motorcycle and plate components so they can contribute more reliably to end-to-end traffic-violation analysis.
+
+## Project Structure
 
 ```text
 motorcycle-helmet-violation-detection/
@@ -210,9 +252,9 @@ motorcycle-helmet-violation-detection/
 └── README.md
 ```
 
-The local `dataset/`, `.venv/`, and temporary inference images are excluded from Git. The `test_images/` and `test_videos/` directories are currently empty and are not tracked.
+The local `dataset/`, `.venv/`, and temporary inference images are excluded from Git. The `test_images/` and `test_videos/` directories are empty and are not tracked.
 
-## 17. Installation
+## Installation
 
 Clone the repository and enter its directory:
 
@@ -234,83 +276,45 @@ Install the dependencies:
 pip install -r requirements.txt
 ```
 
-## 18. Run the Application
+## Run the Application
 
-From the repository root, run:
+From the repository root, start the Gradio application:
 
 ```bash
 python app/app.py
 ```
 
-Open the local Gradio URL printed in the terminal. It is commonly `http://127.0.0.1:7860`.
+Open the local Gradio URL printed in the terminal (commonly `http://127.0.0.1:7860`).
 
-## 19. Hardware and Environment
+## Hardware and Environment
 
-- **Training and fine-tuning:** Google Colab, NVIDIA Tesla T4 (as reported in the project training notes).
+- **Training and fine-tuning:** Google Colab with an NVIDIA Tesla T4, as reported in the project notes.
 - **Local testing:** MacBook.
 - **Python:** 3.11.
-- **Inference speed:** Real-time FPS varies depending on hardware, image size, OCR, and the number of second-pass detections. A formal FPS benchmark is not included in this project.
+- **Inference speed:** Varies by hardware, image size, OCR, and number of second-pass detections. A formal FPS benchmark is not included.
 
-## 20. Challenges
+## Results and Example Images
 
-The project addresses or encounters several difficult conditions: confusing helmet and no-helmet appearances, crowded traffic, small or distant heads, rear-view riders, multiple passengers, overlapping people, low-confidence plate detections, different plate styles, OCR errors, partial plates, and false detections on background objects.
+The tables above contain the reported model metrics. The images below are manually run and reviewed examples from the local Version 3 test split. Their summaries describe individual application runs, not dataset-wide performance.
 
-## 21. Error Analysis
-
-Potential failure cases include a bare head classified as a helmet, a helmet classified as no-helmet, a missed plate, a detected plate whose text is unreadable, missed small or distant objects, and overlapping riders that are difficult to associate with a motorcycle. Likely contributing factors include limited examples of difficult cases, class imbalance, small object size, occlusion, lighting, viewpoint, and variation in plate appearance. These are qualitative error categories; the repository does not include a complete per-case error analysis or a quantified breakdown.
-
-## 22. Limitations
-
-- The system is not 100% accurate and its detections need human review.
-- Crowded scenes, occlusion, small heads, and multiple-rider association remain challenging.
-- OCR quality depends on plate visibility, resolution, lighting, and character style.
-- Plate appearance varies across countries and regions; generalization to every style has not been established.
-- The current interface analyzes uploaded images; video and live-camera inference are not implemented.
-- Inference time depends on hardware and includes multiple detection passes and OCR.
-- The repository does not include the training dataset or a populated training notebook, limiting independent reproduction of the reported training runs.
-
-## 23. Future Work
-
-- Collect and label more Cambodian motorcycle and plate images, with appropriate privacy and permissions.
-- Improve full-plate annotations and add more difficult no-helmet examples.
-- Improve OCR for local plate formats and validate it on a larger, representative sample.
-- Improve association for multiple riders and passengers.
-- Add video or live-camera support and measure inference speed on defined hardware.
-- Evaluate a second, distinct deep learning detector and compare it with YOLOv8 using the same data split and evaluation procedure.
-- Explore deployment options after evaluating runtime, accuracy, and operational requirements.
-- Test the system on more real Cambodian road scenes.
-
-## 24. Deep Learning Project Requirements
-
-This project demonstrates object detection, transfer learning/fine-tuning, use of PyTorch, evaluation with precision, recall, and mAP, and qualitative error analysis. The original and fine-tuned custom weights are versions of the same YOLOv8 detector architecture. The COCO-pretrained supporting model is also YOLOv8. Therefore, the current repository does **not** demonstrate a comparison of two distinct deep learning approaches. A second architecture must be implemented and evaluated before that comparison requirement can be claimed as complete.
-
-## 25. Results and Screenshots
-
-The metrics are listed in [Model Evaluation](#10-model-evaluation). The table below shows qualitative examples produced by running the current Gradio inference function on images from the local Version 3 test split. Each comparison shows the input on the left and the annotated application result on the right.
-
-| Example | Input and application result | Application summary |
+| Example | Input and application result | Observed application summary |
 | --- | --- | --- |
-| Crowded traffic — validated detection | ![Input and Gradio result for a crowded traffic scene](results/examples/crowded_traffic_comparison.jpg) | 13 motorcycles; 14 helmeted occupants; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
-| Single rider — validated no-helmet detection | ![Input and Gradio result for an unhelmeted single-rider scene](results/examples/single_rider_comparison.jpg) | 1 motorcycle; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
+| Crowded traffic | ![Input and Gradio result for a crowded traffic scene](results/examples/crowded_traffic_comparison.jpg) | 13 motorcycles; 14 helmeted occupants; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
+| Single rider — missed helmet classification | ![Input and Gradio result showing a helmeted rider whose helmet was not validated](results/examples/single_rider_comparison.jpg) | The rider appears to be wearing a helmet, but the application did not validate the helmet class. This is an example of a missed classification, not a no-helmet success. |
 
-These images illustrate individual inference behavior; they are not a substitute for the quantitative evaluation above. The source dataset is identified as CC BY 4.0 in its Roboflow export metadata. The existing `results/results.png`, `results/confusion_matrix.png`, and `results/sample_detection.png` files are empty in this repository snapshot, so they are not used as figures here.
+The source dataset export identifies its license as CC BY 4.0. Check the dataset terms and attribution requirements before redistribution.
 
-## 26. AI Assistance Disclosure
+## AI Assistance Disclosure
 
 **Tools used:** ChatGPT and OpenAI Codex.
 
-**Scope of use:** Assistance with debugging, code organization, inference-pipeline improvements, technical explanations, and drafting this README.
+AI assistance was used for debugging, code organization, README documentation, inference-pipeline improvements, and technical explanations. The project author remains responsible for checking the code and descriptions. The displayed example results were manually tested and reviewed; reported metrics are presented as recorded in the project notes.
 
-AI tools did not automatically train the model. The student is responsible for reviewing the code, reported results, and AI-generated suggestions before submission and for confirming that the described behavior matches the final project.
+## Conclusion
 
-## 27. Author
+This project demonstrates the use of deep learning for motorcycle helmet violation detection. Its main achievement is detecting helmet and no-helmet cases with a fine-tuned YOLOv8 model. Motorcycle detection and license plate detection/OCR were integrated as supporting features to explore a broader traffic-safety workflow, but they still require further development. Future work will prioritize more reliable helmet classification, stronger motorcycle association, and dedicated plate detection and OCR.
 
-- **Author:** Lim Potkolbotey
-- **Program:** Bachelor of Software Engineering
-- **Institution:** Kirirom Institute of Technology
-- **Academic year:** 2026–2027
-
-## 28. References
+## References
 
 - [Ultralytics YOLO documentation](https://docs.ultralytics.com/)
 - [PyTorch documentation](https://pytorch.org/docs/stable/index.html)

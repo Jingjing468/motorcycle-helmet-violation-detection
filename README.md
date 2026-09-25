@@ -18,14 +18,21 @@ This project explores that workflow. It is not intended to replace traffic offic
 
 The system processes one uploaded image through object detection, association, OCR, and a rule-based violation decision:
 
-```text
-Input image
-    → motorcycle and person detection
-    → helmet / no-helmet detection
-    → number-plate detection
-    → plate crop and OCR
-    → validated violation decision
-    → annotated image and summary in Gradio
+```mermaid
+flowchart TD
+    A[User uploads traffic image] --> B[Run image inference]
+    B --> C[Custom YOLOv8 detector<br/>bike, helmet, no-helmet, plate]
+    B --> D[COCO-pretrained YOLOv8<br/>people and motorcycles]
+    C --> E[Associate head detections<br/>with people and bikes]
+    D --> E
+    E --> F[Validate helmet status<br/>for motorcycle occupants]
+    C --> G[Locate each plate region]
+    G --> H[Crop and enhance plate image]
+    H --> I[EasyOCR reads candidate text]
+    F --> J[Apply violation rule]
+    I --> K[Keep recognized text<br/>or report Unreadable]
+    J --> L[Show annotated result<br/>and summary in Gradio]
+    K --> L
 ```
 
 The displayed custom-model labels are **Bike**, **Helmet**, **No Helmet**, and **Plate**. If at least one validated motorcycle occupant is classified as no-helmet, the application reports a helmet violation.
@@ -188,6 +195,13 @@ motorcycle-helmet-violation-detection/
 ├── notebook/
 │   └── helmet_violation_detection.ipynb
 ├── results/
+│   ├── examples/
+│   │   ├── crowded_traffic_comparison.jpg
+│   │   ├── crowded_traffic_input.jpg
+│   │   ├── crowded_traffic_result.jpg
+│   │   ├── single_rider_comparison.jpg
+│   │   ├── single_rider_input.jpg
+│   │   └── single_rider_result.jpg
 │   ├── confusion_matrix.png
 │   ├── results.png
 │   └── sample_detection.png
@@ -272,11 +286,14 @@ This project demonstrates object detection, transfer learning/fine-tuning, use o
 
 ## 25. Results and Screenshots
 
-The project reports the metrics in [Model Evaluation](#10-model-evaluation). Three result image paths are present in `results/`, but the files in the current repository snapshot are empty (0 bytes), so they cannot be displayed here. Replace them with the exported figures before using this README as a final visual report.
+The metrics are listed in [Model Evaluation](#10-model-evaluation). The table below shows qualitative examples produced by running the current Gradio inference function on images from the local Version 3 test split. Each comparison shows the input on the left and the annotated application result on the right.
 
-- `results/results.png` — training results plot
-- `results/confusion_matrix.png` — confusion matrix
-- `results/sample_detection.png` — sample detection
+| Example | Input and application result | Application summary |
+| --- | --- | --- |
+| Crowded traffic — validated detection | ![Input and Gradio result for a crowded traffic scene](results/examples/crowded_traffic_comparison.jpg) | 13 motorcycles; 14 helmeted occupants; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
+| Single rider — missed detection example | ![Input and Gradio result for a single-rider scene](results/examples/single_rider_comparison.jpg) | 0 motorcycles or validated occupants; 0 plates detected. The app reported no violation because it did not validate a motorcycle occupant. This illustrates a failure case, not a successful detection. |
+
+These images illustrate individual inference behavior; they are not a substitute for the quantitative evaluation above. The source dataset is identified as CC BY 4.0 in its Roboflow export metadata. The existing `results/results.png`, `results/confusion_matrix.png`, and `results/sample_detection.png` files are empty in this repository snapshot, so they are not used as figures here.
 
 ## 26. AI Assistance Disclosure
 
@@ -288,7 +305,7 @@ AI tools did not automatically train the model. The student is responsible for r
 
 ## 27. Author
 
-- **Author:** Yean Sreymom
+- **Author:** Lim Potkolbotey
 - **Program:** Bachelor of Software Engineering
 - **Institution:** Kirirom Institute of Technology
 - **Academic year:** 2026–2027

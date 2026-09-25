@@ -309,7 +309,7 @@ def web_detect(image):
         and d["confidence"] >= final_confidence_thresholds["bike"]
     ]
     bikes = merge_motorcycle_detections(custom_bikes + coco_motorcycle_candidates)
-    print(f"FINAL BIKES: {len(bikes)}")
+    print(f"FINAL BIKE COUNT: {len(bikes)}")
     raw_detections.extend(bikes)
 
     # Dedicated full-image plate inference runs below the general detection
@@ -337,42 +337,42 @@ def web_detect(image):
                 "source": "full-image-plate-pass",
             })
 
-    # Search the lower/rear area of every merged motorcycle for plates that
-    # the full-image pass may miss; crop-local coordinates are mapped back.
+    # Search overlapping lower motorcycle regions so rear and side-mounted
+    # plates remain visible even when the bike box is wide or angled.
     motorcycle_plate_candidates = []
     for bike_index, bike in enumerate(bikes, start=1):
         bx1, by1, bx2, by2 = bike["xyxy"]
         bike_w, bike_h = max(1, bx2 - bx1), max(1, by2 - by1)
-        crop_x1 = max(0, int(bx1 - 0.20 * bike_w))
-        crop_x2 = min(width, int(bx2 + 0.20 * bike_w))
-        crop_y1 = max(0, int(by1 + 0.30 * bike_h))
-        crop_y2 = min(height, int(by2 + 0.35 * bike_h))
-        plate_crop = original[crop_y1:crop_y2, crop_x1:crop_x2]
-        if plate_crop.size == 0:
-            continue
-        print(f"SECOND PASS PLATES (motorcycle {bike_index}):")
-        for result in model.predict(source=plate_crop, **plate_prediction_options):
-            if result.boxes is None:
+        search_y1 = max(0, int(by1 + 0.32 * bike_h))
+        search_y2 = min(height, int(by2 + 0.12 * bike_h))
+        regions = [
+            (bx1 - 0.18 * bike_w, bx2 + 0.18 * bike_w, "lower-wide"),
+            (bx1 - 0.12 * bike_w, bx1 + 0.64 * bike_w, "left-rear-side"),
+            (bx1 + 0.36 * bike_w, bx2 + 0.12 * bike_w, "right-rear-side"),
+        ]
+        for region_x1, region_x2, region_name in regions:
+            crop_x1 = max(0, int(region_x1))
+            crop_x2 = min(width, int(region_x2))
+            plate_crop = original[search_y1:search_y2, crop_x1:crop_x2]
+            if plate_crop.size == 0:
                 continue
-            for box in result.boxes:
-                class_id = int(box.cls[0])
-                class_name = str(model.names[class_id])
-                if class_name != "number-plate":
+            print(f"BIKE PLATE CROP {bike_index} ({region_name}):")
+            for result in model.predict(source=plate_crop, **plate_prediction_options):
+                if result.boxes is None:
                     continue
-                confidence = float(box.conf[0])
-                x1, y1, x2, y2 = map(float, box.xyxy[0])
-                mapped_box = (
-                    x1 + crop_x1, y1 + crop_y1,
-                    x2 + crop_x1, y2 + crop_y1,
-                )
-                print(f"number-plate {confidence:.2f} bbox={mapped_box}")
-                motorcycle_plate_candidates.append({
-                    "class_id": class_id,
-                    "class_name": "number-plate",
-                    "confidence": confidence,
-                    "xyxy": mapped_box,
-                    "source": "motorcycle-plate-pass",
-                })
+                for box in result.boxes:
+                    class_id = int(box.cls[0])
+                    if str(model.names[class_id]) != "number-plate":
+                        continue
+                    confidence = float(box.conf[0])
+                    x1, y1, x2, y2 = map(float, box.xyxy[0])
+                    mapped_box = (x1 + crop_x1, y1 + search_y1,
+                                  x2 + crop_x1, y2 + search_y1)
+                    motorcycle_plate_candidates.append({
+                        "class_id": class_id, "class_name": "number-plate",
+                        "confidence": confidence, "xyxy": mapped_box,
+                        "source": "motorcycle-plate-pass",
+                    })
 
     # Combine every raw plate source, then apply the requested 0.08 threshold.
     # A 0.03-0.08 candidate can remain only when it has a plate-like shape and
@@ -400,7 +400,65 @@ def web_detect(image):
         elif plate["confidence"] >= 0.03 and near_bike and plate_shaped:
             valid_plate_candidates.append(plate)
 
+    print(f"PLATE CANDIDATE COUNTS: full={len(full_plate_candidates)}, bike_crop={len(motorcycle_plate_candidates)}")
     final_plate_detections = merge_duplicate_detections(valid_plate_candidates)
+    fallback_ocr_count = 0
+    if not final_plate_detections and bikes:
+        def fallback_registration_candidate(text):
+            cleaned = re.sub(r"[^A-Z0-9-]", "", text.upper())
+            cleaned = re.sub(r"-+", "-", cleaned).strip("-")
+            digits = sum(char.isdigit() for char in cleaned)
+            letters = sum(char.isalpha() for char in cleaned)
+            return cleaned if 5 <= len(cleaned) <= 12 and digits >= 3 and 1 <= letters <= 5 else None
+
+        fallback_candidates = []
+        for bike_index, bike in enumerate(bikes, start=1):
+            bx1, by1, bx2, by2 = bike["xyxy"]
+            bike_w, bike_h = max(1, bx2 - bx1), max(1, by2 - by1)
+            y1, y2 = max(0, int(by1 + .32 * bike_h)), min(height, int(by2 + .12 * bike_h))
+            for rx1, rx2 in ((bx1 - .18 * bike_w, bx2 + .18 * bike_w),
+                             (bx1 - .12 * bike_w, bx1 + .64 * bike_w),
+                             (bx1 + .36 * bike_w, bx2 + .12 * bike_w)):
+                x1, x2 = max(0, int(rx1)), min(width, int(rx2))
+                crop = original[y1:y2, x1:x2]
+                if crop.size == 0:
+                    continue
+                try:
+                    ocr_items = reader.readtext(
+                        cv2.cvtColor(crop, cv2.COLOR_BGR2RGB), detail=1,
+                        paragraph=False, allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-",
+                    )
+                except Exception as exc:
+                    print(f"Fallback OCR error on bike {bike_index}: {exc}")
+                    continue
+                for polygon, text, confidence in ocr_items:
+                    registration = fallback_registration_candidate(text)
+                    if not registration or float(confidence) < .50:
+                        continue
+                    points = np.asarray(polygon, dtype=float)
+                    px1, py1 = points.min(axis=0)
+                    px2, py2 = points.max(axis=0)
+                    pw, ph = px2 - px1, py2 - py1
+                    if ph <= 0 or not 1.1 <= pw / ph <= 8.0:
+                        continue
+                    model_names = model.names
+                    plate_class_id = next(
+                        (int(i) for i, name in (model_names.items() if isinstance(model_names, dict)
+                                                else enumerate(model_names))
+                         if str(name) == "number-plate"), -1
+                    )
+                    fallback_candidates.append({
+                        "class_id": plate_class_id,
+                        "class_name": "number-plate", "confidence": 0.0,
+                        "xyxy": (max(0, x1 + px1 - .08 * pw), max(0, y1 + py1 - .15 * ph),
+                                 min(width, x1 + px2 + .08 * pw), min(height, y1 + py2 + .15 * ph)),
+                        "source": "ocr-plate-fallback", "plate_text": registration,
+                        "ocr_confidence": float(confidence),
+                    })
+        if fallback_candidates:
+            final_plate_detections = merge_duplicate_detections(fallback_candidates)
+            fallback_ocr_count = len(final_plate_detections)
+    print(f"OCR PLATE FALLBACK COUNT: {fallback_ocr_count}")
     print("FINAL PLATES:")
     for plate_index, plate in enumerate(final_plate_detections, start=1):
         print(f"Plate {plate_index} {plate['confidence']:.2f}")
@@ -499,11 +557,15 @@ def web_detect(image):
     def head_center_in_person_region(head, person):
         hx1, hy1, hx2, hy2 = head["xyxy"]
         px1, py1, px2, py2 = person["xyxy"]
-        head_cx, head_cy = (hx1 + hx2) / 2, (hy1 + hy2) / 2
-        person_h = max(1, py2 - py1)
-        return px1 <= head_cx <= px2 and py1 <= head_cy <= py1 + 0.45 * person_h
+        person_w, person_h = max(1, px2 - px1), max(1, py2 - py1)
+        region = (px1 - .20 * person_w, py1 - .18 * person_h,
+                  px2 + .20 * person_w, py1 + .36 * person_h)
+        ix1, iy1, ix2, iy2 = max(hx1, region[0]), max(hy1, region[1]), min(hx2, region[2]), min(hy2, region[3])
+        head_area = max(1, hx2 - hx1) * max(1, hy2 - hy1)
+        center_in_region = region[0] <= (hx1 + hx2) / 2 <= region[2] and region[1] <= (hy1 + hy2) / 2 <= region[3]
+        return center_in_region and max(0, ix2 - ix1) * max(0, iy2 - iy1) / head_area >= .50
 
-    person_head_thresholds = {"helmet": 0.20, "no-helmet": 0.15}
+    person_head_thresholds = {"helmet": 0.05, "no-helmet": 0.05}
     for person_index, person, bike_index in associated_people:
         full_person_heads = [
             head for head in full_image_head_candidates
@@ -515,15 +577,12 @@ def web_detect(image):
             class_heads = [h for h in full_person_heads if h["class_name"] == class_name]
             value = ", ".join(f"{h['confidence']:.2f}" for h in class_heads) or "none"
             print(f"{class_name}: {value}")
-        if full_person_heads:
-            continue
-
         px1, py1, px2, py2 = person["xyxy"]
         person_w, person_h = max(1, px2 - px1), max(1, py2 - py1)
-        head_x1 = max(0, int(px1 - 0.15 * person_w))
-        head_x2 = min(width, int(px2 + 0.15 * person_w))
-        head_y1 = max(0, int(py1 - 0.12 * person_h))
-        head_y2 = min(height, int(py1 + 0.45 * person_h))
+        head_x1 = max(0, int(px1 - 0.20 * person_w))
+        head_x2 = min(width, int(px2 + 0.20 * person_w))
+        head_y1 = max(0, int(py1 - 0.18 * person_h))
+        head_y2 = min(height, int(py1 + 0.36 * person_h))
         head_crop = original[head_y1:head_y2, head_x1:head_x2]
         if head_crop.size == 0:
             continue
@@ -562,27 +621,24 @@ def web_detect(image):
                     "person_index": person_index,
                 })
 
-    # Merge bike-level and person-head second-pass detections with full-image
-    # predictions before final validation and duplicate suppression.
-    raw_detections = merge_duplicate_detections(raw_detections + occupant_head_candidates)
-
-    raw_head_detections = [
-        d for d in raw_detections
-        if d["class_name"] in ("helmet", "no-helmet")
-    ]
+    # Keep every head candidate until it is assigned to a person. Generic NMS
+    # can erase a nearby passenger's head before per-person comparison.
+    raw_head_detections = [d for d in raw_detections
+                           if d["class_name"] in ("helmet", "no-helmet")]
+    raw_head_detections.extend(occupant_head_candidates)
     print("RAW:")
     for head in raw_head_detections:
         print(f"{head['class_name'].replace('-', ' ').title()} {head['confidence']:.2f}")
 
     def find_person_for_head(head):
-        """Require the head center to be within a person's upper 45 percent."""
+        """Associate a prediction with a padded upper-head region."""
         hx1, hy1, hx2, hy2 = head["xyxy"]
         head_cx, head_cy = (hx1 + hx2) / 2, (hy1 + hy2) / 2
         matches = []
         for person_index, person in enumerate(persons):
-            px1, py1, px2, py2 = person["xyxy"]
-            person_h = max(1, py2 - py1)
-            if px1 <= head_cx <= px2 and py1 <= head_cy <= py1 + 0.45 * person_h:
+            if head_center_in_person_region(head, person):
+                px1, py1, px2, py2 = person["xyxy"]
+                person_h = max(1, py2 - py1)
                 # Prefer confident person boxes and heads near the upper center.
                 vertical_fraction = (head_cy - py1) / person_h
                 matches.append((-(person["confidence"] - vertical_fraction * 0.1), person_index))
@@ -625,11 +681,12 @@ def web_detect(image):
                 return True
         return False
 
-    # Validate head -> person -> motorcycle. Weak custom-model scores survive
-    # only with strong person/bike geometry and matching second-pass support.
+    # Validate geometry and associate all candidate scores with their rider.
     validated_head_candidates = []
     for head in raw_head_detections:
-        person_index = find_person_for_head(head)
+        person_index = head.get("person_index")
+        if person_index is None or person_index >= len(persons) or not head_center_in_person_region(head, persons[person_index]):
+            person_index = find_person_for_head(head)
         label = head["class_name"].replace("-", " ").title()
         if person_index is None:
             print(f"REJECTED: {label} {head['confidence']:.2f} -> no matching person")
@@ -644,25 +701,10 @@ def web_detect(image):
             print(f"REJECTED: {label} {head['confidence']:.2f} -> person not associated with a bike")
             continue
         bike_distance, bike_index = min(bike_matches)
-        second_pass_support = has_second_pass_support(head)
-        person_head_support = has_person_head_fallback_support(head)
-        normal_confidence = final_confidence_thresholds[head["class_name"]]
-        strong_existing_support = (
-            person["confidence"] >= 0.50
-            and bike_distance <= 0.75
-            and second_pass_support
-        )
-        accepted_head_fallback = (
-            person_head_support
-            and head["confidence"] >= person_head_thresholds[head["class_name"]]
-        )
-        accepted_existing_fallback = (
-            strong_existing_support
-            and head["confidence"] >= second_pass_thresholds[head["class_name"]]
-        )
-        if (head["confidence"] < normal_confidence
-                and not (accepted_head_fallback or accepted_existing_fallback)):
-            print(f"REJECTED: {label} {head['confidence']:.2f} -> below final threshold without strong second-pass support")
+        hx1, hy1, hx2, hy2 = head["xyxy"]
+        shape_ratio = max(hx2 - hx1, hy2 - hy1) / max(1, min(hx2 - hx1, hy2 - hy1))
+        if head["class_name"] == "helmet" and shape_ratio > 2.2:
+            print(f"REJECTED: {label} {head['confidence']:.2f} -> implausible head-box shape")
             continue
         validated_head_candidates.append({
             **head,
@@ -670,56 +712,40 @@ def web_detect(image):
             "person_confidence": person["confidence"],
             "bike_index": bike_index,
             "bike_distance": bike_distance,
-            "second_pass_support": second_pass_support or person_head_support,
         })
 
-    # Resolve opposite labels only for the same person and same head geometry.
+    # One final classification per associated rider: compare the best spatially
+    # valid helmet and no-helmet confidence, with stricter helmet evidence.
     validated_heads = []
     uncertain_heads = []
     for person_index in dict.fromkeys(h["person_index"] for h in validated_head_candidates):
         person_heads = [h for h in validated_head_candidates if h["person_index"] == person_index]
-        active = set(range(len(person_heads)))
-        for i, first in enumerate(person_heads):
-            if i not in active:
-                continue
-            ax1, ay1, ax2, ay2 = first["xyxy"]
-            acx, acy = (ax1 + ax2) / 2, (ay1 + ay2) / 2
-            aw, ah = max(1, ax2 - ax1), max(1, ay2 - ay1)
-            for j in range(i + 1, len(person_heads)):
-                second = person_heads[j]
-                if j not in active or first["class_name"] == second["class_name"]:
-                    continue
-                bx1, by1, bx2, by2 = second["xyxy"]
-                intersection = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1))
-                area_a = aw * ah
-                area_b = max(1, bx2 - bx1) * max(1, by2 - by1)
-                iou = intersection / max(1, area_a + area_b - intersection)
-                bcx, bcy = (bx1 + bx2) / 2, (by1 + by2) / 2
-                center_distance = (
-                    ((acx - bcx) / max(aw, bx2 - bx1, 1)) ** 2
-                    + ((acy - bcy) / max(ah, by2 - by1, 1)) ** 2
-                ) ** 0.5
-                if iou < 0.30 and not (intersection > 0 and center_distance <= 0.20):
-                    continue
-                first_score = first["confidence"] + (0.03 if first["second_pass_support"] else 0)
-                second_score = second["confidence"] + (0.03 if second["second_pass_support"] else 0)
-                if abs(first_score - second_score) <= 0.04:
-                    uncertain_heads.extend((first, second))
-                    active.discard(i)
-                    active.discard(j)
-                    break
-                loser = j if first_score > second_score else i
-                active.discard(loser)
-                print(f"REJECTED: {person_heads[loser]['class_name']} conflict -> stronger overlapping class")
-                if loser == i:
-                    break
-        validated_heads.extend(person_heads[index] for index in active)
+        best_helmet = max((h for h in person_heads if h["class_name"] == "helmet"),
+                          key=lambda h: h["confidence"], default=None)
+        best_nohelmet = max((h for h in person_heads if h["class_name"] == "no-helmet"),
+                            key=lambda h: h["confidence"], default=None)
+        helmet_conf = best_helmet["confidence"] if best_helmet else 0.0
+        nohelmet_conf = best_nohelmet["confidence"] if best_nohelmet else 0.0
+        print(f"PERSON {person_index + 1} CANDIDATES: helmet={helmet_conf:.2f}, no-helmet={nohelmet_conf:.2f}")
+        if best_helmet and helmet_conf >= .55 and helmet_conf > nohelmet_conf:
+            validated_heads.append(best_helmet)
+        elif best_nohelmet and nohelmet_conf >= .15:
+            validated_heads.append(best_nohelmet)
+        else:
+            print(f"PERSON {person_index + 1} FINAL: unknown (no confident class)")
 
     validated_by_bike = {index: [] for index in range(len(bikes))}
     for head in validated_heads:
         validated_by_bike[head["bike_index"]].append(head)
 
     print("VALID:")
+    final_by_person = {head["person_index"]: head for head in validated_heads}
+    for person_index, _person, _bike_index in associated_people:
+        final_head = final_by_person.get(person_index)
+        if final_head:
+            print(f"PERSON {person_index + 1} FINAL: {final_head['class_name']} {final_head['confidence']:.2f}")
+        else:
+            print(f"PERSON {person_index + 1} FINAL: unknown")
     for head in validated_heads:
         print(
             f"{head['class_name'].replace('-', ' ').title()} {head['confidence']:.2f} "
@@ -771,7 +797,7 @@ def web_detect(image):
         x1, x2 = min(x1, width - 1), max(x1 + 1, min(x2, width))
         y1, y2 = min(y1, height - 1), max(y1 + 1, min(y2, height))
         plate_crop = original[y1:y2, x1:x2]
-        best_text = "Unreadable"
+        best_text = detection.get("plate_text", "Unreadable")
         if plate_crop.size:
             def registration_candidate(text):
                 cleaned = re.sub(r"[^A-Z0-9-]", "", text.upper())
@@ -998,9 +1024,11 @@ def web_detect(image):
                 )
             else:
                 print("Selected candidate: Unreadable (no plausible OCR candidate)")
-                best_text = "Unreadable"
+                if "plate_text" not in detection:
+                    best_text = "Unreadable"
         else:
-            best_text = "Unreadable"
+            if "plate_text" not in detection:
+                best_text = "Unreadable"
             print("Selected candidate: Unreadable (empty plate crop)")
         plate_results.append(best_text)
         print(f"PLATE {len(plate_results)} SELECTED: {best_text}")

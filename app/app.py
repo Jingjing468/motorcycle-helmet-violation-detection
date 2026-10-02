@@ -1110,25 +1110,72 @@ def web_detect(image):
 
     helmeted_count = sum(head["class_name"] == "helmet" for head in validated_heads)
     no_helmet_count = len(valid_no_helmet)
-    detection_summary_lines = [
-        f"Motorcycles Detected: {len(bikes)}",
-        f"Helmeted Occupants: {helmeted_count}",
-        f"No-Helmet Occupants: {no_helmet_count}",
-        f"License Plates Detected: {len(plate_detections)}",
-        "",
-        "Occupants by Motorcycle:",
+    summary_cards = [
+        ("Motorcycles", len(bikes), ""),
+        ("Helmet", helmeted_count, ""),
+        ("No Helmet", no_helmet_count, "no-helmet-count"),
+        ("License Plates", len(plate_detections), ""),
     ]
+    summary_cards_html = "".join(
+        f'<div class="summary-card {css_class}"><span>{label}</span>'
+        f'<strong>{count}</strong></div>'
+        for label, count, css_class in summary_cards
+    )
+    rider_rows = []
     for bike_index, bike in enumerate(bikes, start=1):
-        occupant_labels = [
-            f"{head['class_name']} {head['confidence'] * 100:.0f}%"
-            for head in validated_by_bike[bike_index - 1]
-        ]
-        detection_summary_lines.append(
-            f"Bike {bike_index}: " + (" + ".join(occupant_labels) if occupant_labels else "no associated occupants")
-        )
-    if uncertain_heads:
-        detection_summary_lines.append(f"Uncertain head conflicts excluded: {len(uncertain_heads)}")
-    detection_summary = "\n".join(detection_summary_lines)
+        occupants = validated_by_bike[bike_index - 1]
+        if occupants:
+            for head in occupants:
+                rider_status = head["class_name"].replace("-", " ").title()
+                status_class = "no-helmet-status" if head["class_name"] == "no-helmet" else ""
+                rider_rows.append(
+                    f'<tr><td>Bike {bike_index}</td><td class="{status_class}">{rider_status}</td>'
+                    f"<td>{head['confidence'] * 100:.0f}% confidence</td></tr>"
+                )
+        else:
+            rider_rows.append(
+                f'<tr><td>Bike {bike_index}</td><td class="unknown-status">Undetermined</td>'
+                '<td>—</td></tr>'
+            )
+    rider_rows_html = "".join(rider_rows) or (
+        '<tr><td colspan="3" class="empty-state">No motorcycles detected.</td></tr>'
+    )
+    detection_summary = f"""
+    <section class="detection-summary" aria-label="Detection Summary">
+      <style>
+        .detection-summary {{ color: #202124; font-family: inherit; }}
+        .summary-grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }}
+        .summary-card {{ box-sizing: border-box; min-width: 0; padding: 16px 18px;
+          border: 1px solid #e1e4e8; border-radius: 8px; background: #fff; }}
+        .summary-card span {{ display: block; color: #5f6368; font-size: 14px; }}
+        .summary-card strong {{ display: block; margin-top: 6px; font-size: 25px; line-height: 1.2; }}
+        .summary-card.no-helmet-count strong {{ color: #8a4b08; }}
+        .rider-card {{ margin-top: 18px; overflow: hidden; border: 1px solid #e1e4e8;
+          border-radius: 8px; background: #fff; }}
+        .rider-card h3 {{ margin: 0; padding: 15px 18px; border-bottom: 1px solid #e1e4e8;
+          font-size: 16px; font-weight: 600; }}
+        .rider-card table {{ width: 100%; border-collapse: collapse; text-align: left; }}
+        .rider-card th, .rider-card td {{ padding: 12px 18px; border-bottom: 1px solid #edf0f2; }}
+        .rider-card th {{ color: #5f6368; font-size: 12px; font-weight: 600; }}
+        .rider-card tr:last-child td {{ border-bottom: 0; }}
+        .no-helmet-status {{ color: #8a4b08; font-weight: 600; }}
+        .unknown-status, .empty-state {{ color: #5f6368; }}
+        @media (max-width: 640px) {{
+          .summary-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }}
+          .summary-card {{ padding: 13px; }}
+          .rider-card th, .rider-card td {{ padding: 10px 12px; }}
+        }}
+      </style>
+      <div class="summary-grid">{summary_cards_html}</div>
+      <div class="rider-card">
+        <h3>Rider Status</h3>
+        <table>
+          <thead><tr><th>Motorcycle</th><th>Status</th><th>Confidence</th></tr></thead>
+          <tbody>{rider_rows_html}</tbody>
+        </table>
+      </div>
+    </section>
+    """
 
     return (
         detected_image,
@@ -1189,10 +1236,7 @@ with gr.Blocks(
             lines=8,
         )
 
-    detection_box = gr.Textbox(
-        label="Detected Objects & Confidence",
-        lines=6
-    )
+    detection_box = gr.HTML()
 
     analyze_button.click(
         fn=web_detect,

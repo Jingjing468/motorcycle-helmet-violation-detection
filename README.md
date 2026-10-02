@@ -227,7 +227,15 @@ The long-term goal is a more complete motorcycle traffic-safety system. The curr
 ```text
 motorcycle-helmet-violation-detection/
 ├── app/
-│   └── app.py
+│   ├── app.py
+│   ├── ui_components.py
+│   ├── ui_helpers.py
+│   └── ui_styles.py
+├── config/
+│   ├── classes.py
+│   ├── paths.py
+│   ├── settings.py
+│   └── thresholds.py
 ├── model/
 │   ├── archive/
 │   │   └── helmet_best_old.pt
@@ -236,23 +244,32 @@ motorcycle-helmet-violation-detection/
 │   └── helmet_best.pt
 ├── notebook/
 │   └── helmet_violation_detection.ipynb
+├── src/
+│   ├── association/       # Rider-to-bike and spatial matching
+│   ├── core/              # End-to-end inference pipeline and result records
+│   ├── detection/         # Model-specific detection helpers
+│   ├── evaluation/        # Metric and error-analysis helpers
+│   ├── models/            # Cached model loading and model adapters
+│   ├── ocr/               # Plate preprocessing, parsing, and OCR scoring
+│   ├── postprocess/       # NMS, duplicate removal, and helmet decision
+│   ├── utils/             # Boxes, images, paths, and logging
+│   └── visualization/     # Annotation colors, drawing, and summary
+├── scripts/
+│   ├── benchmark_fps.py
+│   ├── evaluate_model.py
+│   ├── test_single_image.py
+│   └── validate_project.py
+├── tests/                 # Lightweight model-independent unit tests
+├── docs/                  # Architecture, methodology, data, training, results
 ├── results/
-│   ├── examples/
-│   │   ├── crowded_traffic_comparison.jpg
-│   │   ├── crowded_traffic_input.jpg
-│   │   ├── crowded_traffic_result.jpg
-│   │   ├── single_rider_comparison.jpg
-│   │   ├── single_rider_input.jpg
-│   │   └── single_rider_result.jpg
-│   ├── confusion_matrix.png
-│   ├── results.png
-│   └── sample_detection.png
+│   └── figures/
+├── test_images/
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
 
-The local `dataset/`, `.venv/`, and temporary inference images are excluded from Git. The `test_images/` and `test_videos/` directories are empty and are not tracked.
+The local `dataset/`, `.venv/`, temporary inference images, and user-provided files under `test_images/` are excluded from Git. The tracked test-images directory contains usage instructions only.
 
 ## Installation
 
@@ -286,6 +303,38 @@ python app/app.py
 
 Open the local Gradio URL printed in the terminal (commonly `http://127.0.0.1:7860`).
 
+The Gradio entry point stays at `app/app.py`. Its callback delegates inference to `src/core/pipeline.py`; reusable UI, model loading, detection helpers, OCR, post-processing, and visualization code are kept in their respective packages.
+
+## Tests and Utility Scripts
+
+Run the lightweight unit tests (they use synthetic boxes and do not load model weights):
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Check configured model files and imports, then optionally initialize model and OCR dependencies:
+
+```bash
+python scripts/validate_project.py
+python scripts/validate_project.py --load-models
+```
+
+Run one image through the app or measure end-to-end throughput on supplied images:
+
+```bash
+python scripts/test_single_image.py --image path/to/image.jpg
+python scripts/benchmark_fps.py --images test_images/
+```
+
+FPS is measured from actual runs and depends on the selected images, hardware, model initialization, and OCR workload. To evaluate weights against a dataset with a supplied YAML file:
+
+```bash
+python scripts/evaluate_model.py --data path/to/data.yaml
+```
+
+See `docs/` for architecture, methodology, dataset, training, evaluation, limitations, future work, and AI usage notes.
+
 ## Hardware and Environment
 
 - **Training and fine-tuning:** Google Colab with an NVIDIA Tesla T4, as reported in the project notes.
@@ -299,8 +348,8 @@ The tables above contain the reported model metrics. The images below are manual
 
 | Example | Input and application result | Observed application summary |
 | --- | --- | --- |
-| Crowded traffic | ![Input and Gradio result for a crowded traffic scene](results/examples/crowded_traffic_comparison.jpg) | 13 motorcycles; 14 helmeted occupants; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
-| Single rider — missed helmet classification | ![Input and Gradio result showing a helmeted rider whose helmet was not validated](results/examples/single_rider_comparison.jpg) | The rider appears to be wearing a helmet, but the application did not validate the helmet class. This is an example of a missed classification, not a no-helmet success. |
+| Crowded traffic | ![Input and Gradio result for a crowded traffic scene](results/figures/examples/crowded_traffic_comparison.jpg) | 13 motorcycles; 14 helmeted occupants; 1 validated no-helmet occupant; 0 plates detected. The app reported a helmet violation. |
+| Single rider — missed helmet classification | ![Input and Gradio result showing a helmeted rider whose helmet was not validated](results/figures/examples/single_rider_comparison.jpg) | The rider appears to be wearing a helmet, but the application did not validate the helmet class. This is an example of a missed classification, not a no-helmet success. |
 
 The source dataset export identifies its license as CC BY 4.0. Check the dataset terms and attribution requirements before redistribution.
 

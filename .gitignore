@@ -7,3 +7,7 @@ __pycache__/
 dataset/
 temp_input.jpg
 temp_plate.jpg
+
+# Local sample images are optional and may contain user data.
+test_images/*
+!test_images/README.md

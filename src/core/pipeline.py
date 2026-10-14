@@ -32,13 +32,13 @@ from src.ocr.easyocr_reader import read_plate
 
 def run_pipeline(image, model, coco_model, reader):
     if image is None:
-        return None, "Please upload an image", "Not detected", ""
+        return None, "Please upload an image", "Not detected", "", []
 
     if model is None:
-        return None, "Model dependency is missing. Please install ultralytics.", "Not detected", ""
+        return None, "Model dependency is missing. Please install ultralytics.", "Not detected", "", []
 
     if reader is None:
-        return None, "OCR dependency is missing. Please install easyocr.", "Not detected", ""
+        return None, "OCR dependency is missing. Please install easyocr.", "Not detected", "", []
 
     original = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     height, width = original.shape[:2]
@@ -707,9 +707,33 @@ def run_pipeline(image, model, coco_model, reader):
         bikes, validated_by_bike, helmeted_count, no_helmet_count, len(plate_detections)
     )
 
+    # Presentation-only crops from the same validated boxes used above; this
+    # does not invoke either detector again.
+    preview_detections = sorted(
+        final_detections,
+        key=lambda item: (item["class_name"] not in ("helmet", "no-helmet"), -item["confidence"]),
+    )[:12]
+    object_gallery = []
+    for detection in preview_detections:
+        x1, y1, x2, y2 = map(int, detection["xyxy"])
+        x1, x2 = max(0, x1), min(width, x2)
+        y1, y2 = max(0, y1), min(height, y2)
+        crop = original[y1:y2, x1:x2]
+        if crop.size == 0:
+            continue
+        crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+        class_label = {
+            "bike": "Motorcycle",
+            "number-plate": "License Plate",
+            "no-helmet": "No Helmet",
+        }.get(detection["class_name"], detection["class_name"].title())
+        caption = f"{class_label} · {detection['confidence'] * 100:.0f}%"
+        object_gallery.append((crop_rgb, caption))
+
     return (
         detected_image,
         status,
         plate_text,
-        detection_summary
+        detection_summary,
+        object_gallery,
     )

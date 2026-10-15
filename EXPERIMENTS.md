@@ -22,6 +22,13 @@ This file records the available baseline/fine-tuned comparison. The values are p
 - Runtime/training stack: PyTorch + Ultralytics; Google Colab Tesla T4.
 - Main objective: helmet/no-helmet detection. Motorcycle and plate detection/OCR support the application.
 
+## Observations
+
+- Overall recall increased from 0.881 to 0.888 and mAP@50:95 increased from 0.669 to 0.691 after fine-tuning.
+- No-helmet recall increased from 0.822 to 0.834; no-helmet mAP@50:95 increased from 0.605 to 0.621.
+- Precision decreased slightly overall (0.923 to 0.918) and for no-helmet (0.912 to 0.906).
+- The reported changes are consistent with the project goal of improving difficult no-helmet cases, but no separate difficult-case test-set metrics are present.
+
 ## Recordkeeping limits
 
 Per-run configuration files, raw validation logs, random seeds, and the exact dataset YAML used for these reported metrics are not tracked. The ignored local dataset export is Version 3 and has different split counts. Treat the figures above as supplied project records, not independently reproducible results from this checkout. Future runs should record the dataset version, checkpoint, command/configuration, environment versions, and validation output together.

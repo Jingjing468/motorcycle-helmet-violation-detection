@@ -1,6 +1,17 @@
 # Project Tasks
 
-This is a forward-looking checklist based on documented limitations and future-work goals. It does not imply the tasks have already been completed.
+This list separates completed project work from remaining goals. Completed items reflect the existing application, checkpoints, reported experiment results, repository assets, and runnable code in this checkout.
+
+## Completed
+
+- [x] Record the four-class YOLO dataset mapping and reported train/validation/test counts.
+- [x] Train a YOLOv8 baseline and fine-tune with difficult no-helmet cases; retain the baseline and fine-tuned checkpoints.
+- [x] Record the baseline-versus-fine-tuned evaluation comparison.
+- [x] Build the working Gradio image application with detection summary and object preview.
+- [x] Add supporting motorcycle and number-plate detection with EasyOCR.
+- [x] Prepare presentation assets and example images for the final project demo.
+
+## Future work
 
 ## Helmet detection
 

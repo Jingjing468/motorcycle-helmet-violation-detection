@@ -1,14 +1,11 @@
 # Presentation assets
 
-Use this directory for final presentation materials associated with the project. No exported slide deck was present when this structure was organized, so no presentation files are included yet.
+This folder contains the presentation PDF and PNG previews of two of its slides:
 
-Suggested organization when assets are ready:
+- [Project Overview](images/project_overview.png) — PDF page 3.
+- [Model Architecture and Training Strategy](images/model_architecture_training.png) — PDF page 8.
+- [Full presentation PDF](Motorcycle%20Helmet%20Violation%20Detection%20Presentation.pdf).
 
-```text
-slides/
-├── final_presentation.pptx   # editable presentation
-├── exports/                  # PDF or image export for sharing
-└── assets/                   # figures created specifically for the slides
-```
+The PNGs are in `images/` and were rendered directly from the PDF at 2160 pixels wide for clear viewing. The PDF remains the source presentation; no slide content was changed.
 
-Existing application examples and evaluation figures remain in `results/figures/`; avoid copying them unless a slide-specific derivative is needed. Include attribution for third-party dataset imagery.
+Existing application examples and evaluation figures remain in `results/figures/`. Include attribution for third-party dataset imagery in any presentation materials.

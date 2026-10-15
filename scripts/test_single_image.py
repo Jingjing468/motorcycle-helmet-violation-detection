@@ -18,7 +18,7 @@ def main():
     image = cv2.imread(args.image)
     if image is None:
         parser.error(f"Could not read image: {args.image}")
-    result, status, plates, summary = web_detect(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    result, status, plates, summary, *_gallery = web_detect(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(args.output, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
     print(status)

@@ -2,6 +2,20 @@
 
 ## Inference flow
 
+The detector stages follow the common YOLOv8 path:
+
+```text
+Input image (resized to the configured inference size)
+    → Backbone (extracts image features)
+    → Neck (combines features at multiple scales)
+    → Detection head (predicts box locations and class scores)
+    → bike / helmet / no-helmet / number-plate detections
+```
+
+`helmet` and `no-helmet` detections are the main feature. `bike` supports motorcycle localization and rider association; `number-plate` detection and EasyOCR are supporting features. EasyOCR reads candidate text from a detected plate crop after image preprocessing; it does not change the YOLO headwear decision.
+
+The broader app also runs person/motorcycle detection and association as validation context:
+
 ```mermaid
 flowchart TD
     A[Uploaded RGB image] --> B[Custom YOLOv8 model]

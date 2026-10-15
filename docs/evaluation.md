@@ -13,7 +13,7 @@ The figures below are the project-reported baseline/fine-tuned comparison suppli
 | No-Helmet mAP@50 | 0.911 | 0.917 |
 | No-Helmet mAP@50:95 | 0.605 | 0.621 |
 
-The fine-tuned model has higher reported recall and mAP values, including the no-helmet metrics, while precision is slightly lower. These aggregate metrics summarize the supplied evaluation; they do not imply perfect detection in individual images. The no-helmet class is central to the project objective.
+The fine-tuned model has higher reported recall and mAP values, including the no-helmet metrics, while precision is slightly lower. This is consistent with the reported aim of improving difficult no-helmet cases; the table does not isolate those cases as a separate test set. These aggregate metrics do not imply perfect detection in individual images. The same values are available in `results/metrics/comparison.csv`.
 
 ## Metric definitions
 

@@ -14,9 +14,10 @@ Open the local Gradio URL printed in the terminal. The app loads its model files
 
 1. Upload an image with a helmeted rider. Review the annotated image, detected-object crop, rider status, and confidence.
 2. Upload an image with a rider not wearing a helmet. Review the validated no-helmet result and violation status.
-3. Review motorcycle detections, number-plate detections, and any OCR text as supporting features.
+3. Upload a mixed/crowded scene and review multiple rider statuses and confidence values.
+4. Review supporting motorcycle detections, number-plate detections, and any EasyOCR output.
 
-Use examples from `results/figures/examples/` or the smaller inputs in `data/samples/`. Results can vary by image. In particular, an absent helmet detection does not itself establish a violation; the app requires a validated no-helmet detection associated with a motorcycle occupant.
+Use examples from `results/figures/examples/`, `data/samples/helmet/`, and `data/samples/mixed/`. Results can vary by image. In particular, an absent helmet detection does not itself establish a violation; the app requires a validated no-helmet detection associated with a motorcycle occupant.
 
 ## Reading the outputs
 

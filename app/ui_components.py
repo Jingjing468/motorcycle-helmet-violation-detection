@@ -27,13 +27,14 @@ def build_app(analyze_callback):
                 object_gallery = gr.Gallery(
                     label="Detected Objects", columns=4, rows=1, height=190,
                     object_fit="contain", elem_classes="object-gallery",
+                    elem_id="detected-objects-gallery",
                 )
 
         with gr.Row(elem_classes="info-row"):
             with gr.Column(scale=1, elem_classes="info-panel"):
-                status_box = gr.Textbox(label="Helmet Violation Status", value="Waiting for analysis", lines=2, interactive=False)
+                status_box = gr.Textbox(label="Helmet Violation Status", value="Waiting for analysis", lines=2, interactive=False, elem_id="violation-status")
             with gr.Column(scale=1, elem_classes="info-panel"):
-                plate_box = gr.Textbox(label="License Plate Result", placeholder="Waiting for analysis", lines=4, interactive=False)
+                plate_box = gr.Textbox(label="License Plate Result", placeholder="Waiting for analysis", lines=4, interactive=False, elem_id="plate-result")
 
         gr.Markdown("## Detection Summary", elem_classes="section-title")
         detection_box = gr.HTML()

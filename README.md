@@ -105,11 +105,59 @@ The local ignored `dataset/` directory contains a Roboflow **Version 3** export 
 
 The Version 3 export metadata records auto-orientation, resizing to fit within 640 × 640 pixels, and generated variants with random rotation between −15° and +15° and Gaussian blur up to 1.5 pixels. The exact Version 4 split counts and final training augmentation settings are not recorded in the repository.
 
+### Version 5 Local Phnom Penh Update
+
+The Version 5 dataset adds 13 manually annotated local Phnom Penh road images to the original 8,481-image Roboflow dataset. The local images came from road-video sources in Koh Pich and Toul Tompoung and use the same four classes: `bike`, `helmet`, `no-helmet`, and `number-plate`.
+
+| Split | Images |
+| --- | ---: |
+| Training | 5,949 |
+| Validation | 1,690 |
+| Test | 855 |
+| **Total** | **8,494** |
+
+This is approximately a 70% / 20% / 10% split. The updated dataset is identified as **Version5_Local_PhnomPenh**.
+
+```mermaid
+flowchart TD
+    A[Original Dataset<br/>8,481 images] --> B[Add 13 local Phnom Penh images<br/>Koh Pich + Toul Tompoung]
+    B --> C[Manual annotation<br/>same four classes]
+    C --> D[Version 5<br/>8,494 images]
+    D --> E[YOLOv5s / YOLOv8s training]
+```
+
+### Local Phnom Penh Samples
+
+These are sample images from the local Phnom Penh image collection. The dataset update used 13 manually annotated images in total.
+
+| Koh Pich | Toul Tompoung |
+| --- | --- |
+| ![Koh Pich road image sample](data/%20phnom_penh/raw/koh_pich/koh_pich_001.jpg) | ![Toul Tompoung road image sample](data/%20phnom_penh/raw/toul_tompoung/toul_tompoung_001.jpg) |
+
 ## Training and Fine-Tuning
 
 According to the project training notes, the YOLOv8 model was trained and fine-tuned in Google Colab using an NVIDIA Tesla T4 GPU. The later fine-tuning continued from the earlier model for **10 additional epochs**, using additional difficult samples. Its main purpose was to improve no-helmet detection in challenging cases such as rear views, crowded scenes, small heads, and multiple riders.
 
 The repository does not contain a populated training notebook or the complete training configuration. Batch size, optimizer settings, and exact splits used for each reported run are therefore not specified here. The fine-tuned and original custom weights use the same YOLOv8 detector architecture.
+
+### YOLOv5s vs YOLOv8s Architecture Comparison
+
+As a separate experiment from the YOLOv8 baseline and fine-tuning workflow above, YOLOv5s and YOLOv8s were trained to compare two YOLO architectures. Both used the same Version 5 dataset, 640 × 640 image size, batch size of 16, 40 epochs, Tesla T4 GPU, and the same four classes. Evaluation used Precision, Recall, mAP@50, and mAP@50:95.
+
+| Metric | YOLOv5s | YOLOv8s |
+| --- | ---: | ---: |
+| Precision | 0.927 | 0.916 |
+| Recall | 0.893 | 0.904 |
+| mAP@50 | 0.944 | 0.949 |
+| mAP@50:95 | 0.691 | 0.711 |
+| No-Helmet Precision | 0.916 | 0.900 |
+| No-Helmet Recall | 0.844 | 0.864 |
+| No-Helmet mAP@50 | 0.919 | 0.928 |
+| No-Helmet mAP@50:95 | 0.617 | 0.653 |
+
+YOLOv5s achieved slightly higher precision, while YOLOv8s achieved higher recall and mAP. YOLOv8s also performed better on the main No-Helmet class, improving No-Helmet Recall from 84.4% to 86.4% and No-Helmet mAP@50:95 from 61.7% to 65.3%. Therefore, YOLOv8s was selected as the stronger architecture for the helmet-violation detection task.
+
+<!-- TODO: Add the actual YOLOv5s vs YOLOv8s comparison chart here when it is available in the repository. -->
 
 ## Evaluation Results
 
@@ -365,8 +413,12 @@ This project demonstrates the use of deep learning for motorcycle helmet violati
 
 ## References
 
+- [Ultralytics YOLOv5](https://github.com/ultralytics/yolov5)
+- [Ultralytics YOLOv8](https://docs.ultralytics.com/models/yolov8/)
 - [Ultralytics YOLO documentation](https://docs.ultralytics.com/)
 - [PyTorch documentation](https://pytorch.org/docs/stable/index.html)
 - [EasyOCR project](https://github.com/JaidedAI/EasyOCR)
 - [Gradio documentation](https://www.gradio.app/docs)
 - [Roboflow Universe dataset: Helmet and Number Plate Detection for Motorbike Safety](https://universe.roboflow.com/helmet-and-number-plate-detection-project/helmet-and-number-plate-detection-for-motorbike-safety-iityz)
+- Koh Pich local image source: [Phnom Penh road-video source](https://youtu.be/dVp_nmBBjnk?si=OZMLCB6It6rNRHA9).
+- Toul Tompoung local image source: [Phnom Penh road-video source](https://youtu.be/tCAWfYIPyuw?si=Rn5bWCPgWwHVv1V6).

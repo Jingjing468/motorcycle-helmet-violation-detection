@@ -1,11 +1,57 @@
-# Presentation assets
+# Presentation
 
-This folder contains the presentation PDF and PNG previews of two of its slides:
+This folder contains the final presentation for the **Motorcycle Helmet Violation Detection** project.
 
-- [Project Overview](images/project_overview.png) — PDF page 3.
-- [Model Architecture and Training Strategy](images/model_architecture_training.png) — PDF page 8.
-- [Full presentation PDF](Motorcycle%20Helmet%20Violation%20Detection%20Presentation.pdf).
+## File
 
-The PNGs are in `images/` and were rendered directly from the PDF at 2160 pixels wide for clear viewing. The PDF remains the source presentation; no slide content was changed.
+- **Motorcycle Helmet Violation Detection – Lim Potkolbotey Presentation.pdf**\
+  Final updated presentation used for the Deep Learning project defense.
 
-Existing application examples and evaluation figures remain in `results/figures/`. Include attribution for third-party dataset imagery in any presentation materials.
+## Latest Updates
+
+The presentation includes:
+
+- Local Phnom Penh dataset
+  - Koh Pich
+  - Toul Tompoung
+- Updated Version 5 dataset
+- Approach 1 — YOLOv5s
+- Approach 2 — YOLOv8s
+- YOLOv5s vs YOLOv8s comparison
+- Updated experimental setup
+- Updated evaluation results
+- No-Helmet performance comparison
+- References and resource links
+- EasyOCR for license plate text recognition
+
+## Presentation Focus
+
+The main objective is motorcycle helmet violation detection using deep learning.
+
+Detection classes:
+
+- Bike
+- Helmet
+- No-Helmet
+- Number Plate
+
+The updated presentation compares YOLOv5s and YOLOv8s using the same dataset and training settings.
+
+## Final Model Comparison
+
+| Metric              | YOLOv5s | YOLOv8s |
+| ------------------- | ------- | ------- |
+| Precision           | 0.927   | 0.916   |
+| Recall              | 0.893   | 0.904   |
+| mAP@50              | 0.944   | 0.949   |
+| mAP@50:95           | 0.691   | 0.711   |
+| No-Helmet Recall    | 0.844   | 0.864   |
+| No-Helmet mAP@50:95 | 0.617   | 0.653   |
+
+YOLOv8s achieved better overall recall and mAP, especially for the main No-Helmet class.
+
+## Note
+
+The PDF in this folder is the current final presentation.
+
+No separate slide preview images are stored in this folder.
